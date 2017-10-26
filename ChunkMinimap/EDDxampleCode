@@ -1,0 +1,170 @@
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+
+@SuppressWarnings("serial")
+public class ChunkView extends JPanel implements ActionListener, MouseListener, MouseMotionListener, MouseWheelListener
+{
+	static int origenX, origenY, clickX, clickY, chunkSize = 40, centerChunkX, centerChunkY;
+	static boolean shouldDrag = false;
+	
+	public static ChunkView globalInstance = new ChunkView();
+
+	public static void main(String args[]) {}
+	
+	//FRAME STUFF
+	public ChunkView()
+	{
+		JFrame frame = new JFrame();
+		frame = new JFrame("Chunk Minimap ");
+		frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+		frame.setSize(new Dimension(600, 600));
+		addMouseListener(this);
+		addMouseMotionListener(this);
+		addMouseWheelListener(this);
+		frame.add(this);
+		frame.setVisible(true);
+		
+		origenX = (frame.getWidth()/2) - 8;
+		origenY = (frame.getHeight()/2) - 20;
+	}
+	//DRAW STUFF
+	public void paintComponent(Graphics g1)
+	{
+		super.paintComponent(g1);
+		Graphics2D g = (Graphics2D) g1;
+		Rectangle bounds = g.getClipBounds();
+		
+		//radius {radiusX, radiusY}
+		int[] radius = getRadius(bounds);
+		
+		//DRAW CHUNKS
+		for (int j = centerChunkY - radius[1]; j < centerChunkY + radius[1]; j += chunkSize)
+		{
+			for (int i = centerChunkX - radius[0]; i < centerChunkX + radius[0]; i += chunkSize)
+			{
+				//ChunkPos
+				int x = (i - origenX) / chunkSize;
+				int y = (j - origenY) / chunkSize;
+				Color[] colors = getChunkColor(x, y);
+				
+				g.setColor(colors[0]);
+				g.fillRect(i, j, chunkSize, chunkSize);
+				
+				g.setColor(colors[1]);
+				
+				String text = x+", "+y;
+
+					
+				
+				int textWidth = g.getFontMetrics().stringWidth(text);
+				
+				if (textWidth < chunkSize && chunkSize > 10) g.drawString(text, i + chunkSize/2 - textWidth/2, j + 5 + chunkSize/2);
+
+			}
+		}
+		
+		
+		//0,0 LINES
+		g.setColor(new Color(0xFF0000));
+		g.drawLine(0, origenY, bounds.width, origenY);
+		g.drawLine(0, origenY+1, bounds.width, origenY+1);
+		g.setColor(new Color(0x0000FF));
+		g.drawLine(origenX, 0, origenX, bounds.height);
+		g.drawLine(origenX+1, 0, origenX+1, bounds.height);
+	}
+	
+	
+	//MATH
+	static int[] getRadius(Rectangle bounds)
+	{
+		int midX = bounds.width/2,
+		midY = bounds.height/2;	
+		centerChunkX = midX - ((midX - origenX) % chunkSize);		
+		centerChunkY = midY - ((midY - origenY) % chunkSize);
+		int radiusX = (int) (Math.floor((double)(centerChunkX + (chunkSize*3))/chunkSize))*chunkSize;
+		int radiusY = (int) (Math.floor((double)(centerChunkY + (chunkSize*4))/chunkSize))*chunkSize;
+		return new int[] {radiusX, radiusY};
+	}
+	
+	//CHUNK STUFF
+	public static Color[] getChunkColor(int chunkX, int chunkZ)
+	{
+		Color chunkColor = new Color(0xc1c1c1);
+		Color textColor = new Color(0); 
+		
+		if ((chunkX % 2 + chunkZ % 2) % 2 == 0)
+		{
+			chunkColor = getDarker(chunkColor);
+		}
+		
+		return new Color[] {chunkColor,textColor};
+	}
+	static Color getDarker(Color c)
+	{
+		int scale = 30;
+	    int r = Math.max(0, (int) (c.getRed() -scale));
+	    int g = Math.max(0, (int) (c.getGreen() -scale));
+	    int b = Math.max(0, (int) (c.getBlue() -scale));
+	    return new Color(r,g,b);
+	}
+
+    //EVENTS
+	
+	//EVENTS
+	public void mousePressed(MouseEvent e) 
+	{
+		shouldDrag = false;
+		if (e.getButton() == 1)
+		{
+			shouldDrag = true;
+			clickX = e.getX();
+			clickY = e.getY();
+		}
+	}
+	public void mouseDragged(MouseEvent e)
+	{
+		if (shouldDrag)
+		{
+			origenX += e.getX() - clickX;
+			origenY += e.getY() - clickY;
+			clickX = e.getX();
+			clickY = e.getY();
+			repaint();
+		}		
+	}
+	public void mouseWheelMoved(MouseWheelEvent e)
+	{
+		double i = -e.getPreciseWheelRotation();
+		int save = chunkSize;
+		if (i < 0) chunkSize += chunkSize > 6 ? i : 0;
+		if (i > 0) chunkSize += chunkSize < 60 ? i : 0;
+		
+		if (chunkSize != save)
+		{
+			origenX += (i > 0 ? -1 : 1)*((e.getX() - origenX)/chunkSize + 1);
+			origenY += (i > 0 ? -1 : 1)*((e.getY() - origenY)/chunkSize + 1);
+			repaint();
+        }
+	}
+	
+
+	public void actionPerformed(ActionEvent e){}
+	public void mouseClicked (MouseEvent e)   {}
+	public void mouseReleased(MouseEvent e)   {}
+	public void mouseEntered (MouseEvent e)   {}
+	public void mouseExited  (MouseEvent e)   {}
+	public void mouseMoved   (MouseEvent e)   {}
+}
